@@ -2,7 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0F3D2E" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>ULI Berlin 2026 — Karte &amp; Zeitplan</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -103,35 +105,43 @@
   .day-head .stats{font-size:10.5px;color:rgba(255,255,255,.75);letter-spacing:.5px;
     text-transform:uppercase;white-space:nowrap;flex-shrink:0}
 
-  /* ===== Per-day horizontal gantt ===== */
+  /* ===== Per-day VERTICAL gantt (time runs top-to-bottom) ===== */
   .day-body{padding:14px 14px 22px;min-width:0}
-  .gantt{position:relative;border:1px solid var(--bc-line);background:var(--bc-white);
-    overflow-x:auto;overflow-y:hidden;border-radius:0}
-  .gantt-inner{position:relative;min-width:760px}   /* allow internal h-scroll if narrow */
+  .vgantt{position:relative;border:1px solid var(--bc-line);background:var(--bc-white);
+    display:flex;overflow-x:auto;overflow-y:hidden}
+  .hour-rail{flex:0 0 56px;position:relative;border-right:1px solid var(--bc-line);
+    background:var(--bc-bg)}
+  .hour-rail .hr{position:absolute;left:0;right:0;
+    border-top:1px solid var(--bc-line);
+    font-family:'Jost';font-variant-numeric:tabular-nums;
+    font-size:10.5px;font-weight:500;color:var(--bc-muted);letter-spacing:.5px;
+    padding:4px 8px}
+  .hour-rail .hr:first-child{border-top:none}
 
-  .hours{display:grid;height:24px;border-bottom:1px solid var(--bc-line);
-    background:var(--bc-bg);color:var(--bc-muted);font-size:10.5px;font-weight:500;
-    letter-spacing:.5px;position:sticky;top:0;z-index:2}
-  .hours div{border-right:1px solid var(--bc-line);padding:5px 6px;
-    font-variant-numeric:tabular-nums;font-family:'Jost'}
-  .hours div:last-child{border-right:none}
+  .vlanes{position:relative;flex:1 1 auto;min-width:0}
+  .vlanes-inner{position:relative;height:100%}
+  .vgrid{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--bc-line)}
+  .vgrid.half{border-top:1px dashed rgba(20,60,85,.06)}
 
-  .lanes{position:relative;padding:6px 0}
-  .gridcol{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(20,60,85,.07);pointer-events:none}
-
-  .session{position:absolute;height:30px;border-radius:0;padding:5px 9px 5px 18px;
+  .session{position:absolute;border-radius:0;padding:6px 8px 6px 14px;
     color:#fff;font-weight:500;font-size:11.5px;cursor:pointer;letter-spacing:.1px;
-    border:none;display:flex;align-items:center;gap:6px;
-    overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+    border:none;display:flex;flex-direction:column;gap:2px;
+    overflow:hidden;
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
   .session .ribbon{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .session .row1{display:flex;align-items:center;gap:6px;font-family:'Jost'}
   .session .t{font-weight:600;font-variant-numeric:tabular-nums;font-size:10.5px;
-    opacity:.85;letter-spacing:.3px;flex-shrink:0;font-family:'Jost'}
-  .session .ttl{overflow:hidden;text-overflow:ellipsis}
-  .session .badges{margin-left:auto;display:flex;gap:3px;flex-shrink:0}
-  .session .badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:0;
-    background:rgba(255,255,255,.18);color:#fff;letter-spacing:.5px;text-transform:uppercase;
+    opacity:.92;letter-spacing:.3px;flex-shrink:0}
+  .session .ttl{font-weight:500;font-size:11.5px;line-height:1.25;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+    overflow:hidden;text-overflow:ellipsis}
+  .session .badges{display:flex;gap:3px;flex-shrink:0}
+  .session .badge{font-size:9px;font-weight:600;padding:1px 5px;border-radius:0;
+    background:rgba(255,255,255,.22);color:#fff;letter-spacing:.5px;text-transform:uppercase;
     font-family:'Jost'}
+  .session.short .ttl{-webkit-line-clamp:1;font-size:10.5px}
+  .session.short{padding:3px 6px 3px 12px}
+  .session.short .row1{font-size:9.5px}
   .session.invite{outline:1.5px dashed rgba(255,255,255,.85);outline-offset:-3px}
   .session.noloc{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 6px,rgba(255,255,255,0) 6px 12px)}
   .session:hover{filter:brightness(1.08);z-index:5;
@@ -139,7 +149,7 @@
   .session.dim{opacity:.18}
   .session.active{outline:2px solid var(--bc-cyan);outline-offset:2px;z-index:10}
 
-  /* ===== Leaflet (Bluecon look) ===== */
+  /* ===== Leaflet popup styling ===== */
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--bc-white);color:var(--bc-text);
     border-radius:0;box-shadow:0 8px 24px rgba(20,60,85,.22)}
   .leaflet-popup-content{margin:12px 14px;font-size:12.5px;line-height:1.4;font-family:'Jost'}
@@ -170,6 +180,87 @@
   /* footer-strip on map */
   .map-footer{position:absolute;left:8px;bottom:8px;z-index:500;font-size:10.5px;color:var(--bc-muted);
     background:rgba(255,255,255,.85);padding:4px 8px;font-family:'Jost';letter-spacing:.3px}
+
+  /* ===========================================================
+     MOBILE OPTIMIZATIONS (≤ 768 px)
+     =========================================================== */
+  @media (max-width: 768px){
+    html,body{overflow:auto;height:auto;-webkit-text-size-adjust:100%}
+
+    /* ---- Compact header (wraps below 768px) ---- */
+    header.app{height:auto;min-height:auto;padding:9px 12px;
+      flex-direction:column;align-items:stretch;gap:8px;
+      position:sticky;top:0;z-index:50}
+    .brand{gap:0;width:100%;flex-direction:column;align-items:flex-start}
+    .brand h1{font-size:13px;line-height:1.25;white-space:normal;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .brand .sub{display:none}
+
+    .filterbar{width:100%;gap:6px}
+    .filters{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+      padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .filters::-webkit-scrollbar{height:0;display:none}
+    .filters .label{display:none}
+    .filters button{padding:7px 11px;font-size:11.5px;flex-shrink:0;border-radius:14px;
+      min-height:32px}                    /* touch target */
+    .filters button .dot{width:8px;height:8px}
+
+    /* ---- Layout: single column, natural body scroll ---- */
+    main{grid-template-columns:1fr;height:auto;min-height:0;overflow:visible}
+    #map{height:260px;position:relative;top:auto;border-right:none;
+      border-bottom:1px solid var(--bc-line)}
+    .tl-scroll{height:auto;overflow:visible;scroll-behavior:smooth}
+
+    /* ---- Legend: visible at top, not sticky on mobile (saves screen real estate) ---- */
+    .tl-legend{position:relative;top:auto;font-size:10.5px;
+      padding:7px 12px;gap:8px}
+
+    /* ---- Sticky day headers attach to viewport (under app header) ---- */
+    .day-head{top:0;padding:10px 12px;border-top-width:1px}
+    .day-head .accent{width:6px;height:16px;flex:0 0 6px}
+    .day-head .ttl{font-size:12px;letter-spacing:.4px}
+    .day-head .sub{display:none}
+    .day-head .stats{font-size:9.5px;letter-spacing:.3px}
+
+    /* ---- Day body compact ---- */
+    .day-body{padding:8px 8px 14px}
+    .hour-rail{flex:0 0 44px}
+    .hour-rail .hr{font-size:9.5px;padding:3px 5px}
+    .vgrid.half{display:none}             /* less visual noise */
+
+    /* ---- Sessions: bigger touch targets, smaller text trim ---- */
+    .session{padding:5px 7px 5px 12px}
+    .session .row1{gap:5px}
+    .session .t{font-size:10px}
+    .session .ttl{font-size:11px;line-height:1.2;-webkit-line-clamp:3}
+    .session .badge{font-size:8.5px;padding:1px 4px}
+
+    /* ---- Bottom-sheet details panel ---- */
+    #details{right:0;left:0;bottom:0;width:100%;max-width:none;
+      border-left:none;border-right:none;border-bottom:none;
+      border-top:3px solid var(--bc-cyan);border-radius:14px 14px 0 0;
+      padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 18px);
+      max-height:55vh;overflow-y:auto;
+      box-shadow:0 -10px 30px rgba(20,60,85,.22)}
+    #details h3{font-size:14px}
+    #details .close{font-size:24px;top:8px;right:14px;
+      width:32px;height:32px;display:flex;align-items:center;justify-content:center}
+
+    /* ---- Map controls bigger on touch ---- */
+    .leaflet-touch .leaflet-bar a{width:34px;height:34px;line-height:34px;font-size:18px}
+    .marker-pin{width:30px;height:30px;font-size:12px}     /* easier to tap */
+
+    /* ---- Disable hover lifting on touch ---- */
+    .session:hover{filter:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+  }
+
+  /* very small phones (≤ 380 px) — extra squeeze */
+  @media (max-width: 380px){
+    .brand h1{font-size:12px}
+    .filters button{padding:6px 9px;font-size:11px}
+    #map{height:220px}
+    .hour-rail{flex:0 0 38px}
+  }
 </style>
 </head>
 <body>
@@ -223,7 +314,7 @@
         </div>
         <div class="stats" data-stats="2026-06-01"></div>
       </div>
-      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-01"></div></div></div>
+      <div class="day-body" data-gantt="2026-06-01"></div>
     </section>
 
     <section class="day" id="day-2026-06-02">
@@ -235,7 +326,7 @@
         </div>
         <div class="stats" data-stats="2026-06-02"></div>
       </div>
-      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-02"></div></div></div>
+      <div class="day-body" data-gantt="2026-06-02"></div>
     </section>
 
     <section class="day" id="day-2026-06-03">
@@ -247,7 +338,7 @@
         </div>
         <div class="stats" data-stats="2026-06-03"></div>
       </div>
-      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-03"></div></div></div>
+      <div class="day-body" data-gantt="2026-06-03"></div>
     </section>
   </div>
 </main>
@@ -459,10 +550,15 @@ Object.keys(byVenue).forEach(vid=>{
   markers[vid] = m;
 });
 
-/* ===== Per-day horizontal Gantt ===== */
+/* ===== Per-day VERTICAL Gantt (time top→bottom) ===== */
 const HOUR_START = 8, HOUR_END = 23;
 const HOURS = HOUR_END - HOUR_START;
 const TOTAL_MIN = HOURS*60;
+const IS_MOBILE = window.matchMedia('(max-width: 768px)').matches;
+const PX_PER_HOUR = IS_MOBILE ? 52 : 60;  /* slightly shorter day on mobile */
+const TOTAL_PX = HOURS*PX_PER_HOUR;
+const LANE_W = IS_MOBILE ? 130 : 150;     /* narrower lanes on small screens */
+const LANE_GAP = 4;
 function toMin(t){ const [h,m]=t.split(':').map(Number); return (h-HOUR_START)*60+m; }
 
 function assignLanes(items){
@@ -482,49 +578,73 @@ document.querySelectorAll('[data-gantt]').forEach(host=>{
   const ds = sessions.filter(s=>s.day===day);
   const {items, laneCount} = assignLanes(ds);
 
-  const hours = document.createElement('div');
-  hours.className='hours';
-  hours.style.gridTemplateColumns = `repeat(${HOURS},1fr)`;
-  for(let h=HOUR_START; h<HOUR_END; h++){
-    const c = document.createElement('div');
-    c.textContent = String(h).padStart(2,'0')+":00";
-    hours.appendChild(c);
-  }
-  host.appendChild(hours);
+  // build vertical gantt structure
+  const vg = document.createElement('div');
+  vg.className='vgantt';
+  vg.style.height = TOTAL_PX+'px';
 
-  const lanesEl = document.createElement('div');
-  lanesEl.className='lanes';
-  lanesEl.style.minHeight = (laneCount*36 + 12)+'px';
-  for(let h=1; h<HOURS; h++){
-    const gc = document.createElement('div');
-    gc.className='gridcol';
-    gc.style.left = (h/HOURS*100)+'%';
-    lanesEl.appendChild(gc);
+  // hour rail (left)
+  const rail = document.createElement('div');
+  rail.className='hour-rail';
+  rail.style.height = TOTAL_PX+'px';
+  for(let h=0; h<HOURS; h++){
+    const r = document.createElement('div');
+    r.className='hr';
+    r.style.top = (h*PX_PER_HOUR)+'px';
+    r.textContent = String(HOUR_START+h).padStart(2,'0')+":00";
+    rail.appendChild(r);
   }
-  host.appendChild(lanesEl);
+  vg.appendChild(rail);
+
+  // lanes container — width = laneCount * LANE_W
+  const vlanes = document.createElement('div');
+  vlanes.className='vlanes';
+  const inner = document.createElement('div');
+  inner.className='vlanes-inner';
+  inner.style.height = TOTAL_PX+'px';
+  inner.style.width  = (laneCount*LANE_W)+'px';
+  vlanes.appendChild(inner);
+  vg.appendChild(vlanes);
+
+  // hour gridlines (every hour solid, every half hour dashed)
+  for(let h=0; h<=HOURS; h++){
+    const g = document.createElement('div');
+    g.className='vgrid';
+    g.style.top = (h*PX_PER_HOUR)+'px';
+    inner.appendChild(g);
+    if(h<HOURS){
+      const gh = document.createElement('div');
+      gh.className='vgrid half';
+      gh.style.top = (h*PX_PER_HOUR + PX_PER_HOUR/2)+'px';
+      inner.appendChild(gh);
+    }
+  }
 
   items.forEach(s=>{
     const startMin = toMin(s.start), endMin = toMin(s.end);
-    const left = (startMin/TOTAL_MIN)*100;
-    const width = ((endMin-startMin)/TOTAL_MIN)*100;
+    const top = startMin;                 // 1 min = 1 px
+    const height = endMin - startMin;
     const noLoc = !s.venue;
     const block = document.createElement('div');
-    block.className = 'session'+(s.audience==='invite'?' invite':'')+(noLoc?' noloc':'');
+    block.className = 'session'+(s.audience==='invite'?' invite':'')+(noLoc?' noloc':'')+(height<22?' short':'');
     block.style.background = colorFor(s);
-    block.style.left  = left+'%';
-    block.style.width = Math.max(width,1.5)+'%';
-    block.style.top   = (6 + s._lane*36)+'px';
+    block.style.top    = (top+1)+'px';
+    block.style.height = Math.max(height-2, 18)+'px';
+    block.style.left   = (s._lane*LANE_W + 2)+'px';
+    block.style.width  = (LANE_W - LANE_GAP)+'px';
     block.dataset.venue = s.venue||'';
     block.dataset.event = s.event;
     block.dataset.audience = s.audience;
     block.innerHTML = `
       <span class="ribbon" style="background:${AUD[s.audience].color}"></span>
-      <span class="t">${s.start}</span>
-      <span class="ttl">${s.title}</span>
-      <span class="badges">
-        ${noLoc?'<span class="badge" title="Ort nicht im Programm veröffentlicht">📍</span>':''}
-        <span class="badge" style="background:${AUD[s.audience].color}">${AUD[s.audience].short}</span>
-      </span>`;
+      <div class="row1">
+        <span class="t">${s.start}–${s.end}</span>
+        <span class="badges">
+          ${noLoc?'<span class="badge" title="Ort nicht im Programm veröffentlicht">📍</span>':''}
+          <span class="badge" style="background:${AUD[s.audience].color}">${AUD[s.audience].short}</span>
+        </span>
+      </div>
+      <span class="ttl">${s.title}</span>`;
     block.title = `${s.start}–${s.end}  ·  ${s.title}\n${s.venue?venues[s.venue]?.name:"Ort nicht im Programm veröffentlicht"}\n${AUD[s.audience].label}${s.note?'\n'+s.note:''}`;
     block.addEventListener('click',(e)=>{
       e.stopPropagation();
@@ -532,8 +652,10 @@ document.querySelectorAll('[data-gantt]').forEach(host=>{
       showDetails(s);
       if(s.venue){ const v=venues[s.venue]; if(v){ map.flyTo([v.lat,v.lng],14,{duration:.7}); markers[s.venue]?.openPopup(); } }
     });
-    lanesEl.appendChild(block);
+    inner.appendChild(block);
   });
+
+  host.appendChild(vg);
 });
 
 /* per-day stats */

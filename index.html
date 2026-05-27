@@ -2,7 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0F3D2E" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>ULI Berlin 2026 — Karte &amp; Zeitplan</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -109,7 +111,7 @@
     display:flex;overflow-x:auto;overflow-y:hidden}
   .hour-rail{flex:0 0 56px;position:relative;border-right:1px solid var(--bc-line);
     background:var(--bc-bg)}
-  .hour-rail .hr{position:absolute;left:0;right:0;height:60px;
+  .hour-rail .hr{position:absolute;left:0;right:0;
     border-top:1px solid var(--bc-line);
     font-family:'Jost';font-variant-numeric:tabular-nums;
     font-size:10.5px;font-weight:500;color:var(--bc-muted);letter-spacing:.5px;
@@ -178,6 +180,87 @@
   /* footer-strip on map */
   .map-footer{position:absolute;left:8px;bottom:8px;z-index:500;font-size:10.5px;color:var(--bc-muted);
     background:rgba(255,255,255,.85);padding:4px 8px;font-family:'Jost';letter-spacing:.3px}
+
+  /* ===========================================================
+     MOBILE OPTIMIZATIONS (≤ 768 px)
+     =========================================================== */
+  @media (max-width: 768px){
+    html,body{overflow:auto;height:auto;-webkit-text-size-adjust:100%}
+
+    /* ---- Compact header (wraps below 768px) ---- */
+    header.app{height:auto;min-height:auto;padding:9px 12px;
+      flex-direction:column;align-items:stretch;gap:8px;
+      position:sticky;top:0;z-index:50}
+    .brand{gap:0;width:100%;flex-direction:column;align-items:flex-start}
+    .brand h1{font-size:13px;line-height:1.25;white-space:normal;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .brand .sub{display:none}
+
+    .filterbar{width:100%;gap:6px}
+    .filters{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+      padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .filters::-webkit-scrollbar{height:0;display:none}
+    .filters .label{display:none}
+    .filters button{padding:7px 11px;font-size:11.5px;flex-shrink:0;border-radius:14px;
+      min-height:32px}                    /* touch target */
+    .filters button .dot{width:8px;height:8px}
+
+    /* ---- Layout: single column, natural body scroll ---- */
+    main{grid-template-columns:1fr;height:auto;min-height:0;overflow:visible}
+    #map{height:260px;position:relative;top:auto;border-right:none;
+      border-bottom:1px solid var(--bc-line)}
+    .tl-scroll{height:auto;overflow:visible;scroll-behavior:smooth}
+
+    /* ---- Legend: visible at top, not sticky on mobile (saves screen real estate) ---- */
+    .tl-legend{position:relative;top:auto;font-size:10.5px;
+      padding:7px 12px;gap:8px}
+
+    /* ---- Sticky day headers attach to viewport (under app header) ---- */
+    .day-head{top:0;padding:10px 12px;border-top-width:1px}
+    .day-head .accent{width:6px;height:16px;flex:0 0 6px}
+    .day-head .ttl{font-size:12px;letter-spacing:.4px}
+    .day-head .sub{display:none}
+    .day-head .stats{font-size:9.5px;letter-spacing:.3px}
+
+    /* ---- Day body compact ---- */
+    .day-body{padding:8px 8px 14px}
+    .hour-rail{flex:0 0 44px}
+    .hour-rail .hr{font-size:9.5px;padding:3px 5px}
+    .vgrid.half{display:none}             /* less visual noise */
+
+    /* ---- Sessions: bigger touch targets, smaller text trim ---- */
+    .session{padding:5px 7px 5px 12px}
+    .session .row1{gap:5px}
+    .session .t{font-size:10px}
+    .session .ttl{font-size:11px;line-height:1.2;-webkit-line-clamp:3}
+    .session .badge{font-size:8.5px;padding:1px 4px}
+
+    /* ---- Bottom-sheet details panel ---- */
+    #details{right:0;left:0;bottom:0;width:100%;max-width:none;
+      border-left:none;border-right:none;border-bottom:none;
+      border-top:3px solid var(--bc-cyan);border-radius:14px 14px 0 0;
+      padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 18px);
+      max-height:55vh;overflow-y:auto;
+      box-shadow:0 -10px 30px rgba(20,60,85,.22)}
+    #details h3{font-size:14px}
+    #details .close{font-size:24px;top:8px;right:14px;
+      width:32px;height:32px;display:flex;align-items:center;justify-content:center}
+
+    /* ---- Map controls bigger on touch ---- */
+    .leaflet-touch .leaflet-bar a{width:34px;height:34px;line-height:34px;font-size:18px}
+    .marker-pin{width:30px;height:30px;font-size:12px}     /* easier to tap */
+
+    /* ---- Disable hover lifting on touch ---- */
+    .session:hover{filter:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+  }
+
+  /* very small phones (≤ 380 px) — extra squeeze */
+  @media (max-width: 380px){
+    .brand h1{font-size:12px}
+    .filters button{padding:6px 9px;font-size:11px}
+    #map{height:220px}
+    .hour-rail{flex:0 0 38px}
+  }
 </style>
 </head>
 <body>
@@ -231,7 +314,7 @@
         </div>
         <div class="stats" data-stats="2026-06-01"></div>
       </div>
-      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-01"></div></div></div>
+      <div class="day-body" data-gantt="2026-06-01"></div>
     </section>
 
     <section class="day" id="day-2026-06-02">
@@ -243,7 +326,7 @@
         </div>
         <div class="stats" data-stats="2026-06-02"></div>
       </div>
-      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-02"></div></div></div>
+      <div class="day-body" data-gantt="2026-06-02"></div>
     </section>
 
     <section class="day" id="day-2026-06-03">
@@ -255,7 +338,7 @@
         </div>
         <div class="stats" data-stats="2026-06-03"></div>
       </div>
-      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-03"></div></div></div>
+      <div class="day-body" data-gantt="2026-06-03"></div>
     </section>
   </div>
 </main>
@@ -471,9 +554,10 @@ Object.keys(byVenue).forEach(vid=>{
 const HOUR_START = 8, HOUR_END = 23;
 const HOURS = HOUR_END - HOUR_START;
 const TOTAL_MIN = HOURS*60;
-const PX_PER_HOUR = 60;                 /* 1 minute = 1 px */
+const IS_MOBILE = window.matchMedia('(max-width: 768px)').matches;
+const PX_PER_HOUR = IS_MOBILE ? 52 : 60;  /* slightly shorter day on mobile */
 const TOTAL_PX = HOURS*PX_PER_HOUR;
-const LANE_W = 150;                     /* px per lane */
+const LANE_W = IS_MOBILE ? 130 : 150;     /* narrower lanes on small screens */
 const LANE_GAP = 4;
 function toMin(t){ const [h,m]=t.split(':').map(Number); return (h-HOUR_START)*60+m; }
 
