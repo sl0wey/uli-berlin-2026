@@ -12,6 +12,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Plausible Analytics (self-hosted at mcmedia) -->
+<script defer data-domain="uli.bluecon-eng.com"
+        src="https://plausible.mcmedia.io/js/script.tagged-events.outbound-links.js"></script>
+<script>window.plausible = window.plausible || function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
 <style>
 
   /* ===== Clean green palette (no branding) ===== */
@@ -707,6 +711,7 @@ document.querySelectorAll('[data-gantt]').forEach(host=>{
       e.stopPropagation();
       highlight(block);
       showDetails(s);
+      if(window.plausible) plausible('Session Click', {props:{title: s.title, day: s.day, event: s.event}});
       if(s.venue){
         const v=venues[s.venue];
         if(v){
@@ -809,6 +814,7 @@ function setMapCollapsed(collapsed){
   // Leaflet needs to know after the CSS transition (.25s)
   setTimeout(()=> map.invalidateSize(), 280);
   try{ localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); }catch(e){}
+  if(window.plausible) plausible('Map Toggle', {props:{state: collapsed ? 'collapsed' : 'expanded'}});
 }
 
 function ensureMapVisible(){
@@ -846,8 +852,14 @@ document.querySelectorAll('.filters').forEach(group=>{
     if(e.target.tagName!=='BUTTON') return;
     group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
     e.target.classList.add('active');
-    if(e.target.dataset.fe!==undefined) curEvent = e.target.dataset.fe;
-    if(e.target.dataset.fa!==undefined) curAud   = e.target.dataset.fa;
+    if(e.target.dataset.fe!==undefined){
+      curEvent = e.target.dataset.fe;
+      if(window.plausible) plausible('Filter Event', {props:{value: curEvent}});
+    }
+    if(e.target.dataset.fa!==undefined){
+      curAud = e.target.dataset.fa;
+      if(window.plausible) plausible('Filter Audience', {props:{value: curAud}});
+    }
     applyFilters();
   });
 });
