@@ -84,17 +84,25 @@
   .tl-scroll{height:100%;overflow-y:auto;overflow-x:hidden;background:var(--bc-bg);
     min-width:0;scroll-behavior:smooth}
 
-  .tl-legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+  .tl-legend{display:flex;gap:14px;flex-wrap:nowrap;align-items:center;
     padding:10px 18px;background:var(--bc-white);border-bottom:1px solid var(--bc-line);
-    color:var(--bc-muted);font-size:11px;position:sticky;top:0;z-index:8}
+    color:var(--bc-muted);font-size:11px;position:sticky;top:0;z-index:8;
+    overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .tl-legend::-webkit-scrollbar{display:none}
+  .tl-legend > *{flex-shrink:0}
   .tl-legend .lbl{color:var(--bc-navy);font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:10px;margin-right:4px}
   .tl-legend .sw{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+  .tl-legend .legend-desc{padding-left:12px;border-left:1px solid var(--bc-line)}
+  @media (max-width:1100px){
+    .tl-legend{padding:7px 12px;gap:10px;font-size:10.5px}
+    .tl-legend .legend-desc{display:none}    /* save vertical space, keep single line */
+  }
 
   .day{background:var(--bc-bg)}
   .day + .day{border-top:1px solid var(--bc-line)}
 
-  /* sticky day header */
-  .day-head{position:sticky;top:42px;z-index:6;        /* sits just below legend */
+  /* sticky day header — top auto-tracks legend height via JS-set --legend-h */
+  .day-head{position:sticky;top:var(--legend-h,42px);z-index:6;
     background:var(--bc-navy);color:#fff;
     padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;
     border-top:2px solid var(--bc-cyan);box-shadow:0 1px 0 rgba(20,60,85,.10)}
@@ -120,7 +128,9 @@
   .hour-rail .hr:first-child{border-top:none}
 
   .vlanes{position:relative;flex:1 1 auto;min-width:0}
-  .vlanes-inner{position:relative;height:100%}
+  /* min-width:100% guarantees lines extend to the full visible width
+     even when lanes occupy less than the available space */
+  .vlanes-inner{position:relative;height:100%;min-width:100%}
   .vgrid{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--bc-line)}
   .vgrid.half{border-top:1px dashed rgba(20,60,85,.06)}
 
@@ -242,7 +252,7 @@
       padding:7px 12px;gap:8px}
 
     /* ---- Sticky day headers sit below the (sticky) legend ---- */
-    .day-head{top:34px;padding:10px 12px;border-top-width:1px}
+    .day-head{top:var(--legend-h,34px);padding:10px 12px;border-top-width:1px}
     .day-head .accent{width:6px;height:16px;flex:0 0 6px}
     .day-head .ttl{font-size:12px;letter-spacing:.4px}
     .day-head .sub{display:none}
@@ -333,7 +343,7 @@
       <span><i class="sw" style="background:var(--c-d2)"></i>Di</span>
       <span><i class="sw" style="background:var(--c-d3)"></i>Mi · Europe</span>
       <span><i class="sw" style="background:var(--c-uls)"></i>Mi · ULS</span>
-      <span style="border-left:1px solid var(--bc-line);padding-left:12px">Ribbon = Zielgruppe · gestrichelt = Invite · 📍 = Ort offen</span>
+      <span class="legend-desc">Ribbon = Zielgruppe · gestrichelt = Invite · 📍 = Ort offen</span>
     </div>
 
     <section class="day" id="day-2026-06-01">
@@ -749,6 +759,25 @@ map.on('click',()=>{
   document.querySelectorAll('.session').forEach(b=>b.classList.remove('dim'));
   highlight(null);
 });
+
+/* ---------- Dynamic layout glue: legend height + map resize ---------- */
+function syncLegendHeight(){
+  const legend = document.querySelector('.tl-legend');
+  if(legend){
+    document.documentElement.style.setProperty('--legend-h', legend.offsetHeight + 'px');
+  }
+}
+let _resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(()=>{
+    syncLegendHeight();
+    map.invalidateSize();      // Leaflet re-render after layout/breakpoint change
+  }, 120);
+});
+// initial
+window.addEventListener('load', ()=>{ syncLegendHeight(); map.invalidateSize(); });
+syncLegendHeight();
 
 /* ---------- Mobile: collapsible map ---------- */
 const mapToggle = document.getElementById('mapToggle');
