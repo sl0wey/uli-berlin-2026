@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ULI Berlin 2026 — Karte &amp; Zeitplan</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+  /* ===== Clean green palette (no branding) ===== */
+  :root{
+    --bc-navy:#0F3D2E;            /* deep forest */
+    --bc-navy-2:#0A2C21;
+    --bc-cyan:#22C55E;            /* vivid accent green */
+    --bc-cyan-d:#16A34A;
+    --bc-bg:#F6F8F6;
+    --bc-white:#FFFFFF;
+    --bc-line:#E1E6E1;
+    --bc-text:#0F3D2E;
+    --bc-muted:#6B7785;
+    /* day & event colors */
+    --c-d1:#134E4A;        /* Mon · dark teal-green */
+    --c-d2:#047857;        /* Tue · emerald 700 */
+    --c-d3:#10B981;        /* Wed Europe · emerald 500 */
+    --c-uls:#84CC16;       /* Wed ULS · lime (differentiator) */
+    /* audience colors (kept distinct/functional) */
+    --aud-open:#6B7785;
+    --aud-prereg:#F59E0B;
+    --aud-invite:#DC2626;
+    --aud-yl:#8E44AD;
+    --aud-next:#0EA5E9;
+    --aud-members:#E76F51;
+    --header-h:60px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bc-bg);color:var(--bc-text);
+    font-family:'Jost','Inter',-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;
+    font-size:14px;line-height:1.5;font-weight:400;
+    height:100%;overflow:hidden}      /* no body scroll, no horizontal overflow */
+
+  /* ===== Header ===== */
+  header.app{background:var(--bc-navy);color:#fff;height:var(--header-h);
+    padding:12px 22px;border-bottom:2px solid var(--bc-cyan);
+    display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{display:flex;align-items:center;gap:14px;min-width:0}
+  .brand h1{margin:0;font-weight:500;font-size:15px;letter-spacing:.1px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .brand .sub{color:rgba(255,255,255,.65);font-size:11.5px;font-weight:400;margin-top:1px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .filterbar{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .filters{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .filters .label{color:rgba(255,255,255,.55);font-size:9.5px;text-transform:uppercase;
+    letter-spacing:1.5px;padding:3px 4px 3px 0;font-weight:500}
+  .filters button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25);
+    padding:4px 10px;border-radius:0;font-family:'Jost';font-size:11px;font-weight:500;
+    cursor:pointer;display:inline-flex;align-items:center;gap:6px;letter-spacing:.3px;
+    transition:all .15s}
+  .filters button:hover{background:rgba(5,191,254,.12);border-color:var(--bc-cyan)}
+  .filters button.active{background:var(--bc-cyan);color:var(--bc-navy);border-color:var(--bc-cyan);font-weight:600}
+  .filters button .dot{display:inline-block;width:7px;height:7px;border-radius:50%}
+
+  /* ===== Layout ===== */
+  main{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - var(--header-h));
+    min-width:0;overflow:hidden}
+  @media (max-width:1100px){
+    main{grid-template-columns:1fr;height:auto;overflow:visible}
+    html,body{overflow:auto;height:auto}
+    #map{height:340px !important;position:relative !important}
+    .tl-scroll{height:auto !important;overflow:visible !important}
+  }
+  #map{height:100%;border-right:1px solid var(--bc-line);background:var(--bc-bg);min-width:0}
+
+  /* ===== Scrollable day column ===== */
+  .tl-scroll{height:100%;overflow-y:auto;overflow-x:hidden;background:var(--bc-bg);
+    min-width:0;scroll-behavior:smooth}
+
+  .tl-legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+    padding:10px 18px;background:var(--bc-white);border-bottom:1px solid var(--bc-line);
+    color:var(--bc-muted);font-size:11px;position:sticky;top:0;z-index:8}
+  .tl-legend .lbl{color:var(--bc-navy);font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:10px;margin-right:4px}
+  .tl-legend .sw{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+
+  .day{background:var(--bc-bg)}
+  .day + .day{border-top:1px solid var(--bc-line)}
+
+  /* sticky day header */
+  .day-head{position:sticky;top:42px;z-index:6;        /* sits just below legend */
+    background:var(--bc-navy);color:#fff;
+    padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;
+    border-top:2px solid var(--bc-cyan);box-shadow:0 1px 0 rgba(20,60,85,.10)}
+  .day-head .left{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+  .day-head .accent{display:inline-block;width:8px;height:18px;flex:0 0 8px}
+  .day-head .ttl{font-weight:600;font-size:14px;letter-spacing:.5px;text-transform:uppercase}
+  .day-head .sub{color:rgba(255,255,255,.7);font-size:11.5px;font-weight:400;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+  .day-head .stats{font-size:10.5px;color:rgba(255,255,255,.75);letter-spacing:.5px;
+    text-transform:uppercase;white-space:nowrap;flex-shrink:0}
+
+  /* ===== Per-day horizontal gantt ===== */
+  .day-body{padding:14px 14px 22px;min-width:0}
+  .gantt{position:relative;border:1px solid var(--bc-line);background:var(--bc-white);
+    overflow-x:auto;overflow-y:hidden;border-radius:0}
+  .gantt-inner{position:relative;min-width:760px}   /* allow internal h-scroll if narrow */
+
+  .hours{display:grid;height:24px;border-bottom:1px solid var(--bc-line);
+    background:var(--bc-bg);color:var(--bc-muted);font-size:10.5px;font-weight:500;
+    letter-spacing:.5px;position:sticky;top:0;z-index:2}
+  .hours div{border-right:1px solid var(--bc-line);padding:5px 6px;
+    font-variant-numeric:tabular-nums;font-family:'Jost'}
+  .hours div:last-child{border-right:none}
+
+  .lanes{position:relative;padding:6px 0}
+  .gridcol{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(20,60,85,.07);pointer-events:none}
+
+  .session{position:absolute;height:30px;border-radius:0;padding:5px 9px 5px 18px;
+    color:#fff;font-weight:500;font-size:11.5px;cursor:pointer;letter-spacing:.1px;
+    border:none;display:flex;align-items:center;gap:6px;
+    overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+  .session .ribbon{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .session .t{font-weight:600;font-variant-numeric:tabular-nums;font-size:10.5px;
+    opacity:.85;letter-spacing:.3px;flex-shrink:0;font-family:'Jost'}
+  .session .ttl{overflow:hidden;text-overflow:ellipsis}
+  .session .badges{margin-left:auto;display:flex;gap:3px;flex-shrink:0}
+  .session .badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:0;
+    background:rgba(255,255,255,.18);color:#fff;letter-spacing:.5px;text-transform:uppercase;
+    font-family:'Jost'}
+  .session.invite{outline:1.5px dashed rgba(255,255,255,.85);outline-offset:-3px}
+  .session.noloc{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 6px,rgba(255,255,255,0) 6px 12px)}
+  .session:hover{filter:brightness(1.08);z-index:5;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.30),0 4px 12px rgba(20,60,85,.20)}
+  .session.dim{opacity:.18}
+  .session.active{outline:2px solid var(--bc-cyan);outline-offset:2px;z-index:10}
+
+  /* ===== Leaflet (Bluecon look) ===== */
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--bc-white);color:var(--bc-text);
+    border-radius:0;box-shadow:0 8px 24px rgba(20,60,85,.22)}
+  .leaflet-popup-content{margin:12px 14px;font-size:12.5px;line-height:1.4;font-family:'Jost'}
+  .leaflet-popup-content b{color:var(--bc-navy)}
+  .leaflet-popup-content .pin-sessions{margin-top:6px;color:var(--bc-muted);font-size:11.5px;
+    max-height:200px;overflow:auto}
+  .leaflet-popup-content .pin-sessions div{padding:4px 0;border-top:1px solid var(--bc-line)}
+  .leaflet-popup-content .pin-sessions div:first-child{border-top:none}
+  .marker-pin{width:26px;height:26px;border:2px solid #fff;
+    box-shadow:0 2px 6px rgba(20,60,85,.35);display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:#fff;font-weight:600;font-family:'Jost'}
+  .pill{display:inline-block;padding:1px 6px;font-size:9.5px;font-weight:600;
+    color:#fff;margin-right:4px;letter-spacing:.5px;text-transform:uppercase;font-family:'Jost'}
+
+  /* ===== Floating details panel ===== */
+  #details{position:fixed;right:16px;bottom:16px;width:360px;max-width:calc(100vw - 32px);
+    background:var(--bc-white);border:1px solid var(--bc-line);border-top:3px solid var(--bc-cyan);
+    padding:14px 16px 16px;box-shadow:0 12px 30px rgba(20,60,85,.22);
+    font-size:12.5px;z-index:1000;display:none}
+  #details h3{margin:0 0 6px;font-size:14px;color:var(--bc-navy);padding-right:20px;
+    font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+  #details .v{color:var(--bc-cyan-d);font-weight:600}
+  #details .meta{color:var(--bc-muted);font-size:11.5px;margin-bottom:6px}
+  #details .close{position:absolute;top:6px;right:12px;color:var(--bc-muted);cursor:pointer;
+    font-size:18px;line-height:1}
+  #details .noloc-line{color:#D62828;font-weight:600}
+
+  /* footer-strip on map */
+  .map-footer{position:absolute;left:8px;bottom:8px;z-index:500;font-size:10.5px;color:var(--bc-muted);
+    background:rgba(255,255,255,.85);padding:4px 8px;font-family:'Jost';letter-spacing:.3px}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="brand">
+    <div style="min-width:0">
+      <h1>ULI Berlin 2026 — Europe Conference &amp; Urban Leader Summit</h1>
+      <div class="sub">1.–3. Juni 2026</div>
+    </div>
+  </div>
+  <div class="filterbar">
+    <div class="filters">
+      <span class="label">Event</span>
+      <button data-fe="all" class="active">Alle</button>
+      <button data-fe="europe">Europe Conference</button>
+      <button data-fe="uls">Urban Leader Summit</button>
+    </div>
+    <div class="filters">
+      <span class="label">Zielgruppe</span>
+      <button data-fa="all" class="active">Alle</button>
+      <button data-fa="open"><span class="dot" style="background:var(--aud-open)"></span>Offen</button>
+      <button data-fa="prereg"><span class="dot" style="background:var(--aud-prereg)"></span>Pre-Reg</button>
+      <button data-fa="invite"><span class="dot" style="background:var(--aud-invite)"></span>Invite</button>
+      <button data-fa="yl"><span class="dot" style="background:var(--aud-yl)"></span>YL</button>
+      <button data-fa="next"><span class="dot" style="background:var(--aud-next)"></span>NEXT</button>
+      <button data-fa="members"><span class="dot" style="background:var(--aud-members)"></span>Members</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="map"></div>
+
+  <div class="tl-scroll" id="tl-scroll">
+    <div class="tl-legend">
+      <span class="lbl">Legende</span>
+      <span><i class="sw" style="background:var(--c-d1)"></i>Mo</span>
+      <span><i class="sw" style="background:var(--c-d2)"></i>Di</span>
+      <span><i class="sw" style="background:var(--c-d3)"></i>Mi · Europe</span>
+      <span><i class="sw" style="background:var(--c-uls)"></i>Mi · ULS</span>
+      <span style="border-left:1px solid var(--bc-line);padding-left:12px">Ribbon = Zielgruppe · gestrichelt = Invite · 📍 = Ort offen</span>
+    </div>
+
+    <section class="day" id="day-2026-06-01">
+      <div class="day-head">
+        <div class="left">
+          <span class="accent" style="background:var(--c-d1)"></span>
+          <span class="ttl">Tag 1 · Mo 1. Juni</span>
+          <span class="sub">Forums · Site Tours · Welcome · Awards</span>
+        </div>
+        <div class="stats" data-stats="2026-06-01"></div>
+      </div>
+      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-01"></div></div></div>
+    </section>
+
+    <section class="day" id="day-2026-06-02">
+      <div class="day-head">
+        <div class="left">
+          <span class="accent" style="background:var(--c-d2)"></span>
+          <span class="ttl">Tag 2 · Di 2. Juni</span>
+          <span class="sub">Hauptkonferenz · Grand Hyatt Berlin</span>
+        </div>
+        <div class="stats" data-stats="2026-06-02"></div>
+      </div>
+      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-02"></div></div></div>
+    </section>
+
+    <section class="day" id="day-2026-06-03">
+      <div class="day-head">
+        <div class="left">
+          <span class="accent" style="background:var(--c-uls)"></span>
+          <span class="ttl">Tag 3 · Mi 3. Juni</span>
+          <span class="sub">Product Councils &amp; Urban Leader Summit (Siemensstadt)</span>
+        </div>
+        <div class="stats" data-stats="2026-06-03"></div>
+      </div>
+      <div class="day-body"><div class="gantt"><div class="gantt-inner" data-gantt="2026-06-03"></div></div></div>
+    </section>
+  </div>
+</main>
+
+<div id="details">
+  <span class="close" onclick="document.getElementById('details').style.display='none'">×</span>
+  <h3 id="d-title"></h3>
+  <div class="meta" id="d-time"></div>
+  <div class="v" id="d-venue"></div>
+  <div class="meta" id="d-addr"></div>
+  <div id="d-note" style="margin-top:8px"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script>
+/* ===== Venues ===== */
+const venues = {
+  vellows:  {name:"VELLOWS", addr:"Wilmersdorfer Str. 60, 10627 Berlin", lat:52.5072, lng:13.3062},
+  berlinhyp:{name:"Berlin Hyp", addr:"Budapester Str. 1, 10787 Berlin", lat:52.5069, lng:13.3478},
+  westlight:{name:"Greenberg Traurig — The Westlight", addr:"Budapester Str. 35, 10787 Berlin", lat:52.5054, lng:13.3418},
+  macherei: {name:"Design Offices Die Macherei Kreuzberg", addr:"Hallesches Ufer 40, 10963 Berlin", lat:52.4997, lng:13.3844},
+  dataspace:{name:"DATA Space (SAP)", addr:"Rosenthaler Str. 38, 10178 Berlin", lat:52.5245, lng:13.4022},
+  euref:    {name:"EUREF Campus — Gasometer Sky Bar 15", addr:"Torgauer Str., 10829 Berlin", lat:52.4809, lng:13.3559},
+  hbf:      {name:"Hamburger Bahnhof — Nationalgalerie", addr:"Invalidenstr. 50, 10557 Berlin", lat:52.5286, lng:13.3719},
+  hyatt:    {name:"Grand Hyatt Berlin (Hauptkonferenz)", addr:"Marlene-Dietrich-Platz 2, 10785 Berlin", lat:52.5082, lng:13.3725},
+  siemens:  {name:"Siemensstadt Square — Siemens A32", addr:"Rohrdamm 88, 13629 Berlin", lat:52.5362, lng:13.2650},
+  edge:     {name:"EDGE East Side Berlin", addr:"Tamara-Danz-Str. 13, 10243 Berlin", lat:52.5060, lng:13.4486},
+  potsdamer:{name:"Potsdamer Platz (Brookfield)", addr:"Potsdamer Platz, 10785 Berlin", lat:52.5098, lng:13.3756}
+};
+
+/* ===== Sessions ===== */
+const sessions = [
+  /* DAY 1 */
+  {event:"europe", day:"2026-06-01", start:"08:00", end:"10:45", audience:"yl",
+    title:"ULI Young Leaders Leadership Education", venue:"vellows",
+    note:"YL only (unter 35). Separate Registrierung. Hosted by VELLOWS."},
+  {event:"europe", day:"2026-06-01", start:"11:15", end:"18:30", audience:"yl",
+    title:"ULI Young Leaders Forum", venue:"berlinhyp",
+    note:"YL only (unter 35). Hosted by Berlin Hyp. Supported by KPF & LaSalle."},
+  {event:"europe", day:"2026-06-01", start:"11:30", end:"13:00", audience:"invite",
+    title:"ULI Europe Executive Board Meeting", venue:"westlight",
+    note:"Invitation only. Hosted by Greenberg Traurig."},
+  {event:"europe", day:"2026-06-01", start:"13:00", end:"15:45", audience:"prereg",
+    title:"Site Tour 2 — EDGE East Side Berlin", venue:"edge",
+    note:"EDGE & PIMCO Prime Real Estate. Pre-registration required."},
+  {event:"europe", day:"2026-06-01", start:"13:00", end:"16:00", audience:"invite",
+    title:"Global Capital Markets Forum", venue:null,
+    note:"Invitation only. Venue not published in programme."},
+  {event:"europe", day:"2026-06-01", start:"14:00", end:"17:00", audience:"prereg",
+    title:"Site Tour 1 — Greystar: Momento Berlin", venue:null,
+    note:"From abandoned waterpark to 860 rental apartments. Pre-reg required. Full details supplied pre-event."},
+  {event:"europe", day:"2026-06-01", start:"14:00", end:"17:00", audience:"prereg",
+    title:"Site Tour 3 — Art-Invest / ZECH: Die Macherei", venue:"macherei",
+    note:"Pre-reg required."},
+  {event:"europe", day:"2026-06-01", start:"14:30", end:"17:30", audience:"prereg",
+    title:"C Change Forum", venue:"macherei",
+    note:"Pre-registration required."},
+  {event:"europe", day:"2026-06-01", start:"16:00", end:"19:00", audience:"next",
+    title:"ULI NEXT Forum", venue:"westlight",
+    note:"ULI NEXT members only. Hosted by Greenberg Traurig."},
+  {event:"europe", day:"2026-06-01", start:"16:30", end:"18:00", audience:"prereg",
+    title:"Site Tour 4 — Brookfield: Inside Potsdamer Platz", venue:"potsdamer",
+    note:"Real Estate Operations in Action. Pre-reg required."},
+  {event:"europe", day:"2026-06-01", start:"16:30", end:"18:00", audience:"invite",
+    title:"ULI Global Governing Trustee Meeting", venue:"berlinhyp",
+    note:"Hosted by Berlin Hyp."},
+  {event:"europe", day:"2026-06-01", start:"16:30", end:"19:00", audience:"invite",
+    title:"The Future of European Cities — Berlin", venue:"dataspace",
+    note:"How European cities can restore competitiveness. Invitation only."},
+  {event:"europe", day:"2026-06-01", start:"18:30", end:"21:00", audience:"open",
+    title:"Welcome Networking Reception", venue:"euref",
+    note:"Gasometer Sky Bar 15, EUREF Campus."},
+  {event:"europe", day:"2026-06-01", start:"19:00", end:"23:00", audience:"invite",
+    title:"ULI European Leadership Awards Dinner", venue:"hbf",
+    note:"Invitation only. Hamburger Bahnhof."},
+
+  /* DAY 2 */
+  {event:"europe", day:"2026-06-02", start:"08:00", end:"09:30", audience:"open",
+    title:"Registration & Networking", venue:"hyatt", note:"Grand Ballroom"},
+  {event:"europe", day:"2026-06-02", start:"08:00", end:"09:00", audience:"invite",
+    title:"ULI Europe Chair's Breakfast", venue:"hyatt",
+    note:"Anne Kavanagh; Welcome Bernhard H. Hansen (Arrow); Guest Michael Spies (Fuse). Moneo/Piano."},
+  {event:"europe", day:"2026-06-02", start:"08:00", end:"09:00", audience:"invite",
+    title:"ULI Europe Accelerator: Circle of CEOs Breakfast", venue:"hyatt", note:"The Library."},
+  {event:"europe", day:"2026-06-02", start:"09:20", end:"09:45", audience:"open",
+    title:"Welcome to ULI Europe Conference 2026", venue:"hyatt", note:"Greg Clark & Simon Durkin."},
+  {event:"europe", day:"2026-06-02", start:"09:45", end:"10:30", audience:"open",
+    title:"KEYNOTE Geopolitics (Sir Robin Niblett)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"10:30", end:"11:15", audience:"open",
+    title:"KEYNOTE Macro (Marieke Blom, ING)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"11:15", end:"11:45", audience:"open",
+    title:"Coffee Break", venue:"hyatt", note:"Supported by Deutsche Pfandbriefbank AG."},
+  {event:"europe", day:"2026-06-02", start:"11:45", end:"12:10", audience:"open",
+    title:"Fireside — Emerging Risks (Stephan van Vliet, Zurich)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"12:10", end:"13:00", audience:"open",
+    title:"Capital Market Trends — PANEL", venue:"hyatt",
+    note:"Mod Siskind. Panel: McNamara, Forrest, Steinmetz."},
+  {event:"europe", day:"2026-06-02", start:"13:00", end:"13:15", audience:"open",
+    title:"Chair Update & Awards Winners", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"13:15", end:"14:30", audience:"open",
+    title:"Networking Lunch", venue:"hyatt", note:"Gallery/Foyer/Moneo/Piano/Globe Bar."},
+  {event:"europe", day:"2026-06-02", start:"13:15", end:"14:30", audience:"open",
+    title:"Meet the Thought Leaders Lunch", venue:"hyatt",
+    note:"Sponsor tables: JLL, Greenberg Traurig, Urban Partners. Library."},
+  {event:"europe", day:"2026-06-02", start:"14:30", end:"14:45", audience:"open",
+    title:"Fireside — François Trausch (PIMCO Prime RE)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"14:45", end:"15:25", audience:"open",
+    title:"Housing Challenge — PANEL", venue:"hyatt",
+    note:"Mod Schede. Panel: Buch, del Monaco, Wiseman."},
+  {event:"europe", day:"2026-06-02", start:"15:25", end:"15:55", audience:"open",
+    title:"City Futures (Coletta & Sevcik)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"15:55", end:"16:15", audience:"open",
+    title:"Coffee Break", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"16:15", end:"16:55", audience:"open",
+    title:"European Competitiveness — PANEL", venue:"hyatt",
+    note:"Fenk, Searl, Hernández, Lund."},
+  {event:"europe", day:"2026-06-02", start:"16:55", end:"17:20", audience:"open",
+    title:"Europe 2035 (Arturo Bris, IMD)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"17:20", end:"17:35", audience:"open",
+    title:"IMF Perspective (Kevin Fletcher)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"17:35", end:"17:40", audience:"open",
+    title:"Closing Remarks (Angela Cain)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"17:40", end:"17:45", audience:"open",
+    title:"Closing of Conference (Greg Clark)", venue:"hyatt"},
+  {event:"europe", day:"2026-06-02", start:"18:00", end:"18:30", audience:"prereg",
+    title:"Coaches to Market Style Networking Dinner", venue:"hyatt",
+    note:"Departures every 5–10 min from 18:00–18:30. Pre-reg required."},
+  {event:"europe", day:"2026-06-02", start:"18:45", end:"22:00", audience:"prereg",
+    title:"Market Style Networking Dinner", venue:null,
+    note:"Supported by Greenberg Traurig | Greystar | Hines Europe. Pre-reg required. Venue not published in programme."},
+
+  /* DAY 3 */
+  {event:"europe", day:"2026-06-03", start:"08:00", end:"21:00", audience:"members",
+    title:"Europe Product Council Meetings & Dinners", venue:null,
+    note:"Europe Product Council Members only — various venues, supplied direct to registered members."},
+  /* ULS */
+  {event:"uls", day:"2026-06-03", start:"10:30", end:"10:45", audience:"open",
+    title:"Begrüßung & Siemensstadt Square", venue:"siemens",
+    note:"Christian Schmid (Helaba/ULI Germany), Sabine Georgi (ULI DACH), Siemens AG."},
+  {event:"uls", day:"2026-06-03", start:"10:45", end:"11:15", audience:"open",
+    title:"KEYNOTE — Geopolitik & Städte (Martin Wiesmann)", venue:"siemens",
+    note:"Berlin Global Advisors. Mod: Prof. Kerstin Hiska Hennig."},
+  {event:"uls", day:"2026-06-03", start:"11:15", end:"12:00", audience:"open",
+    title:"Capital Markets Reset — PANEL", venue:"siemens",
+    note:"Mod: Isabella Chacón Troidl. Fenk, Klaus, Maler, Pfister."},
+  {event:"uls", day:"2026-06-03", start:"12:00", end:"12:45", audience:"open",
+    title:"Future Cities Dialogue — Urban Regeneration", venue:"siemens",
+    note:"Mod: Sabine Georgi. Epping, Girl, Müller, Vapaavuori, Veddeler."},
+  {event:"uls", day:"2026-06-03", start:"12:45", end:"13:00", audience:"open",
+    title:"Grußwort — Wirtschaftlicher Ausblick Berlins", venue:"siemens",
+    note:"Dr. Severin Fischer, Staatssekretär."},
+  {event:"uls", day:"2026-06-03", start:"13:00", end:"14:00", audience:"open",
+    title:"Lunch & Networking", venue:"siemens"},
+  {event:"uls", day:"2026-06-03", start:"14:00", end:"15:00", audience:"open",
+    title:"Innovation Arena — PropTech Innovation Challenge", venue:"siemens",
+    note:"Martin Rodeck (BLACKLAKE Management Partners)."},
+  {event:"uls", day:"2026-06-03", start:"15:00", end:"16:00", audience:"open",
+    title:"Experience City — A New Chapter for our Urban Core", venue:"siemens",
+    note:"Coletta, Seijas, Parachkevova, Nachtigal."},
+  {event:"uls", day:"2026-06-03", start:"16:00", end:"17:00", audience:"open",
+    title:"Industry Lab & Walking Tour — Siemens City", venue:"siemens"},
+  {event:"uls", day:"2026-06-03", start:"16:15", end:"19:00", audience:"open",
+    title:"Urban Sunset Reception — Drinks & Networking", venue:"siemens"},
+];
+
+const AUD = {
+  open:    {label:"Open",          short:"OPEN",    color:"var(--aud-open)"},
+  prereg:  {label:"Pre-Reg",       short:"PRE-REG", color:"var(--aud-prereg)"},
+  invite:  {label:"Invite Only",   short:"INVITE",  color:"var(--aud-invite)"},
+  yl:      {label:"Young Leaders", short:"YL",      color:"var(--aud-yl)"},
+  next:    {label:"NEXT",          short:"NEXT",    color:"var(--aud-next)"},
+  members: {label:"Members",       short:"MEMBERS", color:"var(--aud-members)"},
+};
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function colorFor(s){
+  if(s.event==="uls") return getCss('--c-uls');
+  if(s.day==="2026-06-01") return getCss('--c-d1');
+  if(s.day==="2026-06-02") return getCss('--c-d2');
+  return getCss('--c-d3');
+}
+function dayBadge(s){ if(s.event==="uls") return "ULS"; return s.day==="2026-06-01"?"D1":s.day==="2026-06-02"?"D2":"D3"; }
+
+/* ===== Map ===== */
+const map = L.map('map', {zoomControl:true}).setView([52.5095, 13.380], 11.4);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; OpenStreetMap &copy; CARTO',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+const byVenue = {};
+sessions.forEach(s=>{ if(s.venue) (byVenue[s.venue] ||= []).push(s); });
+const markers = {};
+Object.keys(byVenue).forEach(vid=>{
+  const v = venues[vid]; if(!v) return;
+  const list = byVenue[vid];
+  const c = colorFor(list[0]);
+  const html = `<div class="marker-pin" style="background:${c}">${list.length}</div>`;
+  const icon = L.divIcon({html, className:'', iconSize:[26,26], iconAnchor:[13,13]});
+  const m = L.marker([v.lat, v.lng], {icon}).addTo(map);
+  const sessionsHtml = list
+    .sort((a,b)=> (a.day+a.start).localeCompare(b.day+b.start))
+    .map(s=>`<div><span class="pill" style="background:${AUD[s.audience].color}">${AUD[s.audience].short}</span>
+       <span class="pill" style="background:${colorFor(s)}">${dayBadge(s)}</span>
+       <b>${s.start}–${s.end}</b> ${s.title}</div>`).join("");
+  m.bindPopup(`<b>${v.name}</b><br><span style="color:var(--bc-muted)">${v.addr}</span>
+    <div class="pin-sessions">${sessionsHtml}</div>`, {maxWidth:380});
+  markers[vid] = m;
+});
+
+/* ===== Per-day horizontal Gantt ===== */
+const HOUR_START = 8, HOUR_END = 23;
+const HOURS = HOUR_END - HOUR_START;
+const TOTAL_MIN = HOURS*60;
+function toMin(t){ const [h,m]=t.split(':').map(Number); return (h-HOUR_START)*60+m; }
+
+function assignLanes(items){
+  const sorted = items.slice().sort((a,b)=> toMin(a.start)-toMin(b.start) || toMin(a.end)-toMin(b.end));
+  const lanes = [];
+  sorted.forEach(it=>{
+    const s = toMin(it.start), e = toMin(it.end);
+    let placed=false;
+    for(let i=0;i<lanes.length;i++) if(lanes[i]<=s){ it._lane=i; lanes[i]=e; placed=true; break; }
+    if(!placed){ it._lane=lanes.length; lanes.push(e); }
+  });
+  return {items:sorted, laneCount:lanes.length};
+}
+
+document.querySelectorAll('[data-gantt]').forEach(host=>{
+  const day = host.dataset.gantt;
+  const ds = sessions.filter(s=>s.day===day);
+  const {items, laneCount} = assignLanes(ds);
+
+  const hours = document.createElement('div');
+  hours.className='hours';
+  hours.style.gridTemplateColumns = `repeat(${HOURS},1fr)`;
+  for(let h=HOUR_START; h<HOUR_END; h++){
+    const c = document.createElement('div');
+    c.textContent = String(h).padStart(2,'0')+":00";
+    hours.appendChild(c);
+  }
+  host.appendChild(hours);
+
+  const lanesEl = document.createElement('div');
+  lanesEl.className='lanes';
+  lanesEl.style.minHeight = (laneCount*36 + 12)+'px';
+  for(let h=1; h<HOURS; h++){
+    const gc = document.createElement('div');
+    gc.className='gridcol';
+    gc.style.left = (h/HOURS*100)+'%';
+    lanesEl.appendChild(gc);
+  }
+  host.appendChild(lanesEl);
+
+  items.forEach(s=>{
+    const startMin = toMin(s.start), endMin = toMin(s.end);
+    const left = (startMin/TOTAL_MIN)*100;
+    const width = ((endMin-startMin)/TOTAL_MIN)*100;
+    const noLoc = !s.venue;
+    const block = document.createElement('div');
+    block.className = 'session'+(s.audience==='invite'?' invite':'')+(noLoc?' noloc':'');
+    block.style.background = colorFor(s);
+    block.style.left  = left+'%';
+    block.style.width = Math.max(width,1.5)+'%';
+    block.style.top   = (6 + s._lane*36)+'px';
+    block.dataset.venue = s.venue||'';
+    block.dataset.event = s.event;
+    block.dataset.audience = s.audience;
+    block.innerHTML = `
+      <span class="ribbon" style="background:${AUD[s.audience].color}"></span>
+      <span class="t">${s.start}</span>
+      <span class="ttl">${s.title}</span>
+      <span class="badges">
+        ${noLoc?'<span class="badge" title="Ort nicht im Programm veröffentlicht">📍</span>':''}
+        <span class="badge" style="background:${AUD[s.audience].color}">${AUD[s.audience].short}</span>
+      </span>`;
+    block.title = `${s.start}–${s.end}  ·  ${s.title}\n${s.venue?venues[s.venue]?.name:"Ort nicht im Programm veröffentlicht"}\n${AUD[s.audience].label}${s.note?'\n'+s.note:''}`;
+    block.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      highlight(block);
+      showDetails(s);
+      if(s.venue){ const v=venues[s.venue]; if(v){ map.flyTo([v.lat,v.lng],14,{duration:.7}); markers[s.venue]?.openPopup(); } }
+    });
+    lanesEl.appendChild(block);
+  });
+});
+
+/* per-day stats */
+document.querySelectorAll('[data-stats]').forEach(node=>{
+  const d = node.dataset.stats;
+  const all = sessions.filter(s=>s.day===d);
+  const open = all.filter(s=>s.audience==='open').length;
+  const inv  = all.filter(s=>s.audience==='invite').length;
+  const pr   = all.filter(s=>s.audience==='prereg').length;
+  const yl   = all.filter(s=>s.audience==='yl').length;
+  const nx   = all.filter(s=>s.audience==='next').length;
+  const mb   = all.filter(s=>s.audience==='members').length;
+  const parts = [`${all.length} Sessions`];
+  if(open) parts.push(`${open} offen`);
+  if(pr)   parts.push(`${pr} pre-reg`);
+  if(inv)  parts.push(`${inv} invite`);
+  if(yl)   parts.push(`${yl} YL`);
+  if(nx)   parts.push(`${nx} NEXT`);
+  if(mb)   parts.push(`${mb} members`);
+  node.textContent = parts.join(' · ');
+});
+
+/* details panel */
+function showDetails(s){
+  const el=document.getElementById('details');
+  document.getElementById('d-title').textContent=s.title;
+  document.getElementById('d-time').innerHTML = `${s.start}–${s.end} · <b style="color:${AUD[s.audience].color}">${AUD[s.audience].label}</b>`;
+  const venueEl = document.getElementById('d-venue');
+  const addrEl  = document.getElementById('d-addr');
+  if(s.venue){
+    venueEl.textContent = venues[s.venue]?.name||'';
+    venueEl.className='v';
+    addrEl.textContent  = venues[s.venue]?.addr||'';
+  } else {
+    venueEl.textContent = '📍 Ort nicht im Programm veröffentlicht';
+    venueEl.className='v noloc-line';
+    addrEl.textContent  = '';
+  }
+  document.getElementById('d-note').textContent=s.note||'';
+  el.style.display='block';
+}
+
+function highlight(el){
+  document.querySelectorAll('.session.active').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+}
+Object.entries(markers).forEach(([vid,m])=>{
+  m.on('click',()=>{
+    document.querySelectorAll('.session').forEach(b=>{
+      b.classList.toggle('dim', b.dataset.venue!==vid);
+    });
+    const first = document.querySelector(`.session[data-venue="${vid}"]`);
+    if(first) first.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+});
+map.on('click',()=>{
+  document.querySelectorAll('.session').forEach(b=>b.classList.remove('dim'));
+  highlight(null);
+});
+
+/* filters */
+let curEvent='all', curAud='all';
+function applyFilters(){
+  document.querySelectorAll('.session').forEach(b=>{
+    const ok = (curEvent==='all'||b.dataset.event===curEvent)
+            && (curAud==='all'  ||b.dataset.audience===curAud);
+    b.style.display = ok ? '' : 'none';
+  });
+  Object.entries(byVenue).forEach(([vid,list])=>{
+    const visible = list.some(s=>
+      (curEvent==='all'||s.event===curEvent) &&
+      (curAud==='all'  ||s.audience===curAud));
+    const m = markers[vid]; if(!m) return;
+    if(visible){ if(!map.hasLayer(m)) m.addTo(map); }
+    else       { if(map.hasLayer(m)) map.removeLayer(m); }
+  });
+}
+document.querySelectorAll('.filters').forEach(group=>{
+  group.addEventListener('click',(e)=>{
+    if(e.target.tagName!=='BUTTON') return;
+    group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    e.target.classList.add('active');
+    if(e.target.dataset.fe!==undefined) curEvent = e.target.dataset.fe;
+    if(e.target.dataset.fa!==undefined) curAud   = e.target.dataset.fa;
+    applyFilters();
+  });
+});
+</script>
+</body>
+</html>

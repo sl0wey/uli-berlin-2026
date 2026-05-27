@@ -1,0 +1,20 @@
+# Source PDFs (large, not needed at runtime — keep locally only)
+*.pdf
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backups + temp
+*.bak
+*.tmp
+~$*
+
+# Build artefacts (none for this site, but defensive)
+node_modules/
+dist/
+build/
