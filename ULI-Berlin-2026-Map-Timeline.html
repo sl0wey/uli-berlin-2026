@@ -200,7 +200,14 @@
     html,body{overflow:hidden;height:100%;-webkit-text-size-adjust:100%}
     body{display:flex;flex-direction:column}
 
-    header.app{flex:0 0 auto;position:relative}
+    /* Stack brand + filterbar vertically — header grows to fit content,
+       no more clipped/overflowing filter rows */
+    header.app{flex:0 0 auto;position:relative;
+      height:auto;min-height:auto;padding:10px 16px;
+      flex-direction:column;align-items:stretch;gap:8px}
+    .brand{width:100%}
+    .filterbar{width:100%;gap:6px}
+    .filters{flex-wrap:wrap}
 
     /* main = fills remaining vp; map fixed-height, timeline grows & scrolls */
     main{flex:1 1 auto;min-height:0;height:auto;
