@@ -71,11 +71,12 @@
   /* ===== Layout ===== */
   main{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - var(--header-h));
     min-width:0;overflow:hidden}
-  @media (max-width:1100px){
+  /* Tablet range only (769–1100). Phones (≤ 768 px) get the fixed-map layout below. */
+  @media (max-width:1100px) and (min-width:769px){
     main{grid-template-columns:1fr;height:auto;overflow:visible}
     html,body{overflow:auto;height:auto}
-    #map{height:340px !important;position:relative !important}
-    .tl-scroll{height:auto !important;overflow:visible !important}
+    #map{height:340px;position:relative}
+    .tl-scroll{height:auto;overflow:visible}
   }
   #map{height:100%;border-right:1px solid var(--bc-line);background:var(--bc-bg);min-width:0}
 
@@ -181,16 +182,21 @@
   .map-footer{position:absolute;left:8px;bottom:8px;z-index:500;font-size:10.5px;color:var(--bc-muted);
     background:rgba(255,255,255,.85);padding:4px 8px;font-family:'Jost';letter-spacing:.3px}
 
+  /* Map collapse toggle — hidden on desktop, visible on mobile */
+  .map-toggle{display:none}
+
   /* ===========================================================
      MOBILE OPTIMIZATIONS (≤ 768 px)
+     Layout: header + map FIXED at top; only the timeline scrolls.
      =========================================================== */
   @media (max-width: 768px){
-    html,body{overflow:auto;height:auto;-webkit-text-size-adjust:100%}
+    /* lock viewport — only .tl-scroll scrolls */
+    html,body{overflow:hidden;height:100%;-webkit-text-size-adjust:100%}
+    body{display:flex;flex-direction:column}
 
-    /* ---- Compact header (wraps below 768px) ---- */
-    header.app{height:auto;min-height:auto;padding:9px 12px;
-      flex-direction:column;align-items:stretch;gap:8px;
-      position:sticky;top:0;z-index:50}
+    /* ---- Compact header (takes its natural height, doesn't scroll) ---- */
+    header.app{flex:0 0 auto;height:auto;min-height:auto;padding:9px 12px;
+      flex-direction:column;align-items:stretch;gap:8px;position:relative}
     .brand{gap:0;width:100%;flex-direction:column;align-items:flex-start}
     .brand h1{font-size:13px;line-height:1.25;white-space:normal;
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -205,18 +211,38 @@
       min-height:32px}                    /* touch target */
     .filters button .dot{width:8px;height:8px}
 
-    /* ---- Layout: single column, natural body scroll ---- */
-    main{grid-template-columns:1fr;height:auto;min-height:0;overflow:visible}
-    #map{height:260px;position:relative;top:auto;border-right:none;
-      border-bottom:1px solid var(--bc-line)}
-    .tl-scroll{height:auto;overflow:visible;scroll-behavior:smooth}
+    /* ---- main = fills remaining vp; map fixed-height, timeline grows & scrolls ---- */
+    main{flex:1 1 auto;min-height:0;height:auto;
+      display:flex;flex-direction:column;
+      grid-template-columns:1fr;overflow:hidden}
+    #map{flex:0 0 240px;height:auto;position:relative;top:auto;
+      border-right:none;border-bottom:none;
+      transition:flex-basis .25s ease}
+    .tl-scroll{flex:1 1 auto;min-height:0;height:auto;
+      overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 
-    /* ---- Legend: visible at top, not sticky on mobile (saves screen real estate) ---- */
-    .tl-legend{position:relative;top:auto;font-size:10.5px;
+    /* ---- Collapsible map toggle bar ---- */
+    .map-toggle{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      flex:0 0 auto;width:100%;background:var(--bc-navy);color:#fff;
+      border:none;border-top:1px solid rgba(255,255,255,.06);
+      border-bottom:1px solid var(--bc-line);
+      padding:6px 0 7px;cursor:pointer;font-family:'Jost';font-size:10.5px;
+      font-weight:500;letter-spacing:.5px;text-transform:uppercase;gap:3px;
+      transition:background .15s}
+    .map-toggle:active{background:var(--bc-navy-2)}
+    .map-toggle-handle{display:block;width:36px;height:3px;border-radius:2px;
+      background:rgba(255,255,255,.4)}
+    .map-toggle-label{opacity:.85}
+    .map-toggle-label::before{content:'▲ ';font-size:9px;vertical-align:1px}
+    body.map-collapsed .map-toggle-label::before{content:'▼ '}
+    body.map-collapsed #map{flex-basis:0;border-bottom:none}
+
+    /* ---- Legend sticky inside .tl-scroll ---- */
+    .tl-legend{position:sticky;top:0;z-index:8;font-size:10.5px;
       padding:7px 12px;gap:8px}
 
-    /* ---- Sticky day headers attach to viewport (under app header) ---- */
-    .day-head{top:0;padding:10px 12px;border-top-width:1px}
+    /* ---- Sticky day headers sit below the (sticky) legend ---- */
+    .day-head{top:34px;padding:10px 12px;border-top-width:1px}
     .day-head .accent{width:6px;height:16px;flex:0 0 6px}
     .day-head .ttl{font-size:12px;letter-spacing:.4px}
     .day-head .sub{display:none}
@@ -228,7 +254,7 @@
     .hour-rail .hr{font-size:9.5px;padding:3px 5px}
     .vgrid.half{display:none}             /* less visual noise */
 
-    /* ---- Sessions: bigger touch targets, smaller text trim ---- */
+    /* ---- Sessions ---- */
     .session{padding:5px 7px 5px 12px}
     .session .row1{gap:5px}
     .session .t{font-size:10px}
@@ -246,11 +272,10 @@
     #details .close{font-size:24px;top:8px;right:14px;
       width:32px;height:32px;display:flex;align-items:center;justify-content:center}
 
-    /* ---- Map controls bigger on touch ---- */
+    /* ---- Map controls ---- */
     .leaflet-touch .leaflet-bar a{width:34px;height:34px;line-height:34px;font-size:18px}
-    .marker-pin{width:30px;height:30px;font-size:12px}     /* easier to tap */
+    .marker-pin{width:30px;height:30px;font-size:12px}
 
-    /* ---- Disable hover lifting on touch ---- */
     .session:hover{filter:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
   }
 
@@ -258,7 +283,7 @@
   @media (max-width: 380px){
     .brand h1{font-size:12px}
     .filters button{padding:6px 9px;font-size:11px}
-    #map{height:220px}
+    #map{flex-basis:200px}
     .hour-rail{flex:0 0 38px}
   }
 </style>
@@ -294,6 +319,12 @@
 
 <main>
   <div id="map"></div>
+
+  <button type="button" class="map-toggle" id="mapToggle"
+          aria-label="Karte ein- oder ausblenden" aria-expanded="true">
+    <span class="map-toggle-handle"></span>
+    <span class="map-toggle-label">Karte ausblenden</span>
+  </button>
 
   <div class="tl-scroll" id="tl-scroll">
     <div class="tl-legend">
@@ -650,7 +681,14 @@ document.querySelectorAll('[data-gantt]').forEach(host=>{
       e.stopPropagation();
       highlight(block);
       showDetails(s);
-      if(s.venue){ const v=venues[s.venue]; if(v){ map.flyTo([v.lat,v.lng],14,{duration:.7}); markers[s.venue]?.openPopup(); } }
+      if(s.venue){
+        const v=venues[s.venue];
+        if(v){
+          ensureMapVisible();      // auto-expand collapsed map on mobile
+          map.flyTo([v.lat,v.lng],14,{duration:.7});
+          markers[s.venue]?.openPopup();
+        }
+      }
     });
     inner.appendChild(block);
   });
@@ -665,15 +703,11 @@ document.querySelectorAll('[data-stats]').forEach(node=>{
   const open = all.filter(s=>s.audience==='open').length;
   const inv  = all.filter(s=>s.audience==='invite').length;
   const pr   = all.filter(s=>s.audience==='prereg').length;
-  const yl   = all.filter(s=>s.audience==='yl').length;
-  const nx   = all.filter(s=>s.audience==='next').length;
   const mb   = all.filter(s=>s.audience==='members').length;
   const parts = [`${all.length} Sessions`];
   if(open) parts.push(`${open} offen`);
   if(pr)   parts.push(`${pr} pre-reg`);
   if(inv)  parts.push(`${inv} invite`);
-  if(yl)   parts.push(`${yl} YL`);
-  if(nx)   parts.push(`${nx} NEXT`);
   if(mb)   parts.push(`${mb} members`);
   node.textContent = parts.join(' · ');
 });
@@ -715,6 +749,35 @@ map.on('click',()=>{
   document.querySelectorAll('.session').forEach(b=>b.classList.remove('dim'));
   highlight(null);
 });
+
+/* ---------- Mobile: collapsible map ---------- */
+const mapToggle = document.getElementById('mapToggle');
+const STORAGE_KEY = 'uli-map-collapsed';
+
+function setMapCollapsed(collapsed){
+  document.body.classList.toggle('map-collapsed', collapsed);
+  if(mapToggle){
+    mapToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    const lbl = mapToggle.querySelector('.map-toggle-label');
+    if(lbl) lbl.textContent = collapsed ? 'Karte zeigen' : 'Karte ausblenden';
+  }
+  // Leaflet needs to know after the CSS transition (.25s)
+  setTimeout(()=> map.invalidateSize(), 280);
+  try{ localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); }catch(e){}
+}
+
+function ensureMapVisible(){
+  if(document.body.classList.contains('map-collapsed')) setMapCollapsed(false);
+}
+
+mapToggle?.addEventListener('click', ()=>{
+  setMapCollapsed(!document.body.classList.contains('map-collapsed'));
+});
+
+// Restore preference on load
+try{
+  if(localStorage.getItem(STORAGE_KEY) === '1') setMapCollapsed(true);
+}catch(e){}
 
 /* filters */
 let curEvent='all', curAud='all';
